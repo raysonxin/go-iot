@@ -1,0 +1,58 @@
+[
+    {
+        "id": "1",
+        "protocol": "modbus-tcp",
+        "address": {
+            "host": "192.168.192.1",
+            "port": 502,
+            "slave_id": 1
+        },
+        "interval": 5,
+        "timeout": 10,
+        "params": [
+            {
+                "name": "Temperature",
+                "code": 10001,
+                "index": 0,
+                "register_addr": 0,
+                "register_count": 1
+            },
+            {
+                "name": "Humidity",
+                "code": 10002,
+                "index": 0,
+                "register_addr": 1,
+                "register_count": 1
+            }
+        ]
+    },
+    {
+        "id": "2",
+        "protocol": "modbus-rtu",
+        "address": {
+            "port_name": "dev/tty1",
+            "baud_rate": 19200,
+            "data_bits": 1,
+            "stop_bits": 0,
+            "parity": 1
+        },
+        "interval": 5,
+        "timeout": 10,
+        "params": [
+            {
+                "name": "Temperature",
+                "code": 10001,
+                "index": 0,
+                "register_addr": 0,
+                "register_count": 1
+            },
+            {
+                "name": "Humidity",
+                "code": 10002,
+                "index": 0,
+                "register_addr": 1,
+                "register_count": 1
+            }
+        ]
+    }
+]
