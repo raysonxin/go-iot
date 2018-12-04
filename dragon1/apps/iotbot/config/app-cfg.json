@@ -1,0 +1,11 @@
+{
+    "gateway_id": "gateway-dev",
+    "server_url": "http://10.0.0.90:8080/v1/terminal/",
+    "mqtt_broker": {
+        "host": "tcp://10.0.90.55:1883",
+        "user_name": "admin",
+        "password": "admin",
+        "client_id": "gateway-dev"
+    },
+    "device_cycle_interval": 10
+}

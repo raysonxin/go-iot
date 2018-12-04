@@ -1,0 +1,9 @@
+{"level":"error","module":"main entry","msg":"test error log","time":"2018-11-06T01:44:50-08:00"}
+{"level":"warning","module":"main entry","msg":"this is warn log","time":"2018-11-06T01:44:50-08:00"}
+{"level":"fatal","module":"main entry","msg":"this is fatal log","time":"2018-11-06T01:44:50-08:00"}
+{"level":"error","module":"main entry","msg":"test error log","time":"2018-11-06T01:46:57-08:00"}
+{"level":"warning","module":"main entry","msg":"this is warn log","time":"2018-11-06T01:46:57-08:00"}
+{"level":"fatal","module":"main entry","msg":"this is fatal log","time":"2018-11-06T01:46:57-08:00"}
+{"level":"error","module":"main entry","msg":"test error log","time":"2018-11-06T01:49:45-08:00"}
+{"level":"warning","module":"main entry","msg":"this is warn log","time":"2018-11-06T01:49:45-08:00"}
+{"level":"fatal","module":"main entry","msg":"this is fatal log","time":"2018-11-06T01:49:45-08:00"}
