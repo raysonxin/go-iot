@@ -9,8 +9,8 @@ import (
 	"time"
 
 	"github.com/goburrow/modbus"
-	"yonghui.cn/dragon/drivers"
-	"yonghui.cn/dragon/utils"
+	"github.com/raysonxin/go-iot/dragon/drivers"
+	"github.com/raysonxin/go-iot/dragon/utils"
 )
 
 //ModbusTcpDriver modbus tcp driver

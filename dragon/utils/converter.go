@@ -43,6 +43,10 @@ func UInt16ToBytesBigEndian(v uint16) []byte {
 	return []byte{byte(v >> 8), byte(v)}
 }
 
+func IntToBytesBigEndian(v int) []byte {
+	return []byte{byte(v >> 24), byte(v >> 16), byte(v >> 8), byte(v)}
+}
+
 //MapToStruct parse map to struct
 func MapToStruct(m interface{}, v interface{}) error {
 	b, err := json.Marshal(m)
@@ -68,4 +72,13 @@ func Xor(buffer []byte) (byte, error) {
 		ret ^= buffer[i]
 	}
 	return ret, nil
+}
+
+func BytesToUInt32LittleEndian(datas []byte, i uint32) error {
+	buff := bytes.NewReader(datas)
+	//var i uint32
+	if err := binary.Read(buff, binary.LittleEndian, &i); err != nil {
+		return err
+	}
+	return nil
 }
