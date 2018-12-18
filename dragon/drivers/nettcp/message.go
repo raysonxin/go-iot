@@ -1,4 +1,4 @@
-package protocol
+package nettcp
 
 // Message represents the message structure contracts.
 type Message interface {
