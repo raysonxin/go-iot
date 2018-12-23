@@ -1,5 +1,9 @@
 package nettcp
 
 type options struct {
-	codec MessageCodec
+	codec     MessageCodec
+	onConnect onConnectFunc
+	onMessage onMessageFunc
+	onClose   onCloseFunc
+	onError   onErrorFunc
 }
