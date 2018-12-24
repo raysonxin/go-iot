@@ -14,9 +14,11 @@ type ServerConn struct {
 	rawConn net.Conn
 	codec   MessageCodec
 
-	once   *sync.Once
-	wg     *sync.WaitGroup
-	sendCh chan []byte
+	once     *sync.Once
+	wg       *sync.WaitGroup
+	buffer   []byte
+	sendCh   chan []byte
+	handleCh chan DecodeResult
 
 	mu     sync.Mutex
 	name   string
@@ -27,13 +29,14 @@ type ServerConn struct {
 
 func NewServerConn(id int64, s *Server, c net.Conn) *ServerConn {
 	sc := &ServerConn{
-		connId:  id,
-		belong:  s,
-		rawConn: c,
-		once:    &sync.Once{},
-		wg:      &sync.WaitGroup{},
-		sendCh:  make(chan []byte, s.opts.bufferSize),
-		heart:   time.Now().UnixNano(),
+		connId:   id,
+		belong:   s,
+		rawConn:  c,
+		once:     &sync.Once{},
+		wg:       &sync.WaitGroup{},
+		sendCh:   make(chan []byte, s.opts.bufferSize),
+		handleCh: make(chan DecodeResult, s.opts.bufferSize),
+		heart:    time.Now().UnixNano(),
 	}
 	sc.ctx, sc.cancel = context.WithCancel(context.WithValue(s.ctx, serverCtx, s))
 	sc.name = c.RemoteAddr().String()
@@ -98,11 +101,16 @@ func (sc *ServerConn) readLoop() {
 				sc.Close()
 			}
 
-			msg, err := sc.codec.Decode(buffer[0:n])
+			buffer = append(sc.buffer, buffer[0:n]...)
+			sc.buffer = sc.codec.Decode(buffer, sc.handleCh)
 		}
 	}
 }
 
 func writeLoop(c Socket, wg *sync.WaitGroup) {
+
+}
+
+func (sc *ServerConn) handleLoop() {
 
 }
