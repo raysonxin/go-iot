@@ -112,5 +112,28 @@ func writeLoop(c Socket, wg *sync.WaitGroup) {
 }
 
 func (sc *ServerConn) handleLoop() {
+	for {
+		select {
+		case <-sc.ctx.Done():
+			return
+		case <-sc.belong.ctx.Done():
+			return
+		case msgHandler := <-sc.handleCh:
+			//msgHandler
+			f, err := GetDeserializer(msgHandler.Type)
+			if err != nil {
+				continue
+			}
 
+			msg, err := f(msgHandler.Datas)
+			if err != nil {
+				continue
+			}
+
+			onMessage := sc.belong.opts.onMessage
+			if onMessage != nil {
+				onMessage(msg, sc)
+			}
+		}
+	}
 }
