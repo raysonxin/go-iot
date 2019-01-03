@@ -2,6 +2,7 @@ package nettcp
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net"
 	"sync"
@@ -70,11 +71,41 @@ func (sc *ServerConn) Start() {
 }
 
 func (sc *ServerConn) Close() {
+	sc.once.Do(func() {
+		onClose := sc.belong.opts.onClose
+		if onClose != nil {
+			onClose(sc)
+		}
 
+		sc.belong.conns.Delete(sc.connId)
+
+		if sock, ok := sc.rawConn.(*net.TCPConn); ok {
+			sock.SetLinger(0)
+		}
+		sc.rawConn.Close()
+
+		sc.mu.Lock()
+		sc.cancel()
+		sc.mu.Unlock()
+
+		close(sc.sendCh)
+		close(sc.handleCh)
+	})
 }
 
 func (sc *ServerConn) Write(msg Message) error {
-	return nil
+	datas, err := sc.codec.Encode(msg)
+	if err != nil {
+		return err
+	}
+
+	select {
+	case sc.sendCh <- datas:
+		err = nil
+	default:
+		err = errors.New("ErrWouldBlock")
+	}
+	return err
 }
 
 func (sc *ServerConn) readLoop() {
