@@ -106,10 +106,14 @@ func (s *Server) Start(l net.Listener) error {
 		sc.SetName(sc.rawConn.RemoteAddr().String())
 
 		s.conns.Store(connId, sc)
+
 		s.wg.Add(1)
 		go func() {
 			sc.Start()
 		}()
+
+		fmt.Println("Accepted client ", sc.Name())
+
 	}
 
 	//	return nil

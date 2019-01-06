@@ -68,6 +68,15 @@ func (sc *ServerConn) Start() {
 	if onConnect != nil {
 		onConnect(sc)
 	}
+
+	sc.wg.Add(1)
+	go sc.readLoop()
+
+	sc.wg.Add(1)
+	go sc.writeLoop()
+
+	sc.wg.Add(1)
+	go sc.handleLoop()
 }
 
 func (sc *ServerConn) Close() {
@@ -138,11 +147,47 @@ func (sc *ServerConn) readLoop() {
 	}
 }
 
-func writeLoop(c Socket, wg *sync.WaitGroup) {
+func (sc *ServerConn) writeLoop() {
+	var pkt []byte
 
+	defer func() {
+		if p := recover(); p != nil {
+			fmt.Println("panic err")
+		}
+
+		sc.wg.Done()
+		fmt.Println("writeLoop go-routine exited.")
+		sc.Close()
+	}()
+
+	for {
+		select {
+		case <-sc.ctx.Done():
+			return
+		case <-sc.belong.ctx.Done():
+			return
+		case pkt = <-sc.sendCh:
+			if pkt != nil {
+				if _, err := sc.rawConn.Write(pkt); err != nil {
+					fmt.Println("error writing data " + err.Error())
+					return
+				}
+			}
+		}
+	}
 }
 
 func (sc *ServerConn) handleLoop() {
+	defer func() {
+		if p := recover(); p != nil {
+			fmt.Println("panic err")
+		}
+
+		sc.wg.Done()
+		fmt.Println("handleLoop go-routine exited.")
+		sc.Close()
+	}()
+
 	for {
 		select {
 		case <-sc.ctx.Done():
