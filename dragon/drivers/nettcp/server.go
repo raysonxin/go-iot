@@ -21,6 +21,42 @@ type options struct {
 
 type ServerOption func(*options)
 
+func OnBufferSizeOption(bsize int) ServerOption {
+	return func(o *options) {
+		o.bufferSize = bsize
+	}
+}
+
+func OnReconnectOption(reconnect bool) ServerOption {
+	return func(o *options) {
+		o.reconnect = reconnect
+	}
+}
+
+func OnConnectOption(cb func(Socket)) ServerOption {
+	return func(o *options) {
+		o.onConnect = cb
+	}
+}
+
+func OnMessageOption(cb func(Message, Socket)) ServerOption {
+	return func(o *options) {
+		o.onMessage = cb
+	}
+}
+
+func OnCloseOption(cb func(Socket)) ServerOption {
+	return func(o *options) {
+		o.onClose = cb
+	}
+}
+
+func OnErrorOption(cb func(Socket)) ServerOption {
+	return func(o *options) {
+		o.onError = cb
+	}
+}
+
 type Server struct {
 	opts     options
 	ctx      context.Context
