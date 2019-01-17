@@ -4,32 +4,32 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/raysonxin/go-iot/dragon/apps/msg"
-	"net"
 	"github.com/raysonxin/go-iot/dragon/drivers/tcp"
+	"net"
 )
 
 func main() {
 
 	tcp.Register(0x0001, func(bytes []byte) (tcp.Message, error) {
 		var greet msg.GreetMessage
-		err:=json.Unmarshal(bytes,&greet)
-		if err!=nil{
-			fmt.Println("unmarshal greet message err",err.Error())
-			return nil,err
+		err := json.Unmarshal(bytes, &greet)
+		if err != nil {
+			fmt.Println("unmarshal greet message err", err.Error())
+			return nil, err
 		}
 
 		//fmt.Println("Data=",greet.Data)
 
-		return greet,err
+		return greet, err
 	})
 
 	onBufferSizeOption := tcp.OnBufferSizeOption(256)
 
 	onConnectOption := tcp.OnConnectOption(func(socket tcp.Socket) {
 
-		sc:=socket.(*tcp.ServerConn)
+		sc := socket.(*tcp.ServerConn)
 
-		fmt.Println("on connect"+sc.Name())
+		fmt.Println("on connect" + sc.Name())
 
 		//sc.SetCodec(tcp.NewLengthTypeDataCodec())
 
@@ -40,7 +40,7 @@ func main() {
 		fmt.Println("on message")
 		switch message.MessageType() {
 		case 0x0001:
-			fmt.Println(" content: "+message.(msg.GreetMessage).Data)
+			fmt.Println(" content: " + message.(msg.GreetMessage).Data)
 		}
 	})
 
