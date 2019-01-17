@@ -1,70 +1,187 @@
-package gotcp
+package tcp
 
 import (
+	"context"
+	"fmt"
 	"net"
+	"os"
 	"sync"
 	"time"
-
-	"github.com/raysonxin/go-iot/dragon/protocol"
 )
 
-type Config struct {
-	PacketSendChanLimit    uint32 // the limit of packet send channel
-	PacketReceiveChanLimit uint32 // the limit of packet receive channel
+type options struct {
+	//codec      MessageCodec
+	onConnect  onConnectFunc
+	onMessage  onMessageFunc
+	onClose    onCloseFunc
+	onError    onErrorFunc
+	bufferSize int
+	reconnect  bool
+}
+
+type ServerOption func(*options)
+
+func OnBufferSizeOption(bsize int) ServerOption {
+	return func(o *options) {
+		o.bufferSize = bsize
+	}
+}
+
+func OnReconnectOption(reconnect bool) ServerOption {
+	return func(o *options) {
+		o.reconnect = reconnect
+	}
+}
+
+func OnConnectOption(cb func(Socket)) ServerOption {
+	return func(o *options) {
+		o.onConnect = cb
+	}
+}
+
+func OnMessageOption(cb func(Message, Socket)) ServerOption {
+	return func(o *options) {
+		o.onMessage = cb
+	}
+}
+
+func OnCloseOption(cb func(Socket)) ServerOption {
+	return func(o *options) {
+		o.onClose = cb
+	}
+}
+
+func OnErrorOption(cb func(Socket)) ServerOption {
+	return func(o *options) {
+		o.onError = cb
+	}
 }
 
 type Server struct {
-	config    *Config           // server configuration
-	callback  ConnCallback      // message callbacks in connection
-	protocol  protocol.Protocol // customize packet protocol
-	exitChan  chan struct{}     // notify all goroutines to shutdown
-	waitGroup *sync.WaitGroup   // wait for all goroutines
+	opts     options
+	ctx      context.Context
+	cancel   context.CancelFunc
+	conns    *sync.Map
+	wg       *sync.WaitGroup
+	mu       sync.Mutex
+	listener net.Listener
 }
 
-// NewServer creates a server
-func NewServer(config *Config, callback ConnCallback, protocol protocol.Protocol) *Server {
-	return &Server{
-		config:    config,
-		callback:  callback,
-		protocol:  protocol,
-		exitChan:  make(chan struct{}),
-		waitGroup: &sync.WaitGroup{},
+func NewServer(opt ...ServerOption) *Server {
+	var opts options
+	for _, o := range opt {
+		o(&opts)
 	}
+
+	// if opts.codec == nil {
+	// 	opts.codec = LengthTypeDataCodec{}
+	// }
+
+	if opts.bufferSize <= 0 {
+		opts.bufferSize = 256
+	}
+
+	s := &Server{
+		opts:  opts,
+		conns: &sync.Map{},
+		wg:    &sync.WaitGroup{},
+	}
+
+	s.ctx, s.cancel = context.WithCancel(context.Background())
+	return s
 }
 
-// Start starts service
-func (s *Server) Start(listener *net.TCPListener, acceptTimeout time.Duration) {
-	s.waitGroup.Add(1)
+func (s *Server) ConnsSize() int {
+	var sz int
+	s.conns.Range(func(k, v interface{}) bool {
+		sz++
+		return true
+	})
+	return sz
+}
+
+func (s *Server) Start(l net.Listener) error {
 	defer func() {
-		listener.Close()
-		s.waitGroup.Done()
+		l.Close()
 	}()
 
-	for {
-		select {
-		case <-s.exitChan:
-			return
+	s.wg.Add(1)
+	var tempDelay time.Duration
 
-		default:
+	for {
+		rawConn, err := l.Accept()
+		if err != nil {
+			if ne, ok := err.(net.Error); ok && ne.Temporary() {
+				if tempDelay == 0 {
+					tempDelay = 5 * time.Millisecond
+				} else {
+					tempDelay *= 2
+				}
+				if max := 1 * time.Second; tempDelay >= max {
+					tempDelay = max
+				}
+				select {
+				case <-time.After(tempDelay):
+				case <-s.ctx.Done():
+				}
+			}
+			return err
 		}
 
-		listener.SetDeadline(time.Now().Add(acceptTimeout))
+		tempDelay = 0
 
-		conn, err := listener.AcceptTCP()
-		if err != nil {
+		sz := s.ConnsSize()
+		if sz >= MaxConnections {
+			//fmt.print too many conns
+			rawConn.Close()
 			continue
 		}
 
-		s.waitGroup.Add(1)
+		connId := time.Now().UnixNano()
+		sc := NewServerConn(connId, s, rawConn)
+		sc.SetName(sc.rawConn.RemoteAddr().String())
+		sc.SetCodec(NewLengthTypeDataCodec())
+
+		s.conns.Store(connId, sc)
+
+		s.wg.Add(1)
 		go func() {
-			newConn(conn, s).Do()
-			s.waitGroup.Done()
+			sc.Start()
 		}()
+
+		fmt.Println("Accepted client ", sc.Name())
+
 	}
+
+	//	return nil
 }
 
-// Stop stops service
 func (s *Server) Stop() {
-	close(s.exitChan)
-	s.waitGroup.Wait()
+	s.mu.Lock()
+	listener := s.listener
+	s.listener = nil
+	s.mu.Unlock()
+	listener.Close()
+
+	conns := map[int64]*ServerConn{}
+	s.conns.Range(func(k, v interface{}) bool {
+		i := k.(int64)
+		c := v.(*ServerConn)
+		conns[i] = c
+		return true
+	})
+	s.conns = nil
+
+	for _, c := range conns {
+		c.rawConn.Close()
+		fmt.Println("close client", c.Name())
+	}
+
+	s.mu.Lock()
+	s.cancel()
+	s.mu.Unlock()
+
+	s.wg.Wait()
+	fmt.Println("server stopped gracefully,bye.")
+	os.Exit(0)
 }
