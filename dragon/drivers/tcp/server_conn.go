@@ -183,7 +183,7 @@ func (sc *ServerConn) writeLoop() {
 func (sc *ServerConn) handleLoop() {
 	defer func() {
 		if p := recover(); p != nil {
-			fmt.Println("panic err")
+			fmt.Println("panic err",p)
 		}
 
 		sc.wg.Done()

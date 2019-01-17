@@ -38,6 +38,10 @@ func main() {
 
 	onMessageOption := tcp.OnMessageOption(func(message tcp.Message, socket tcp.Socket) {
 		fmt.Println("on message")
+		switch message.MessageType() {
+		case 0x0001:
+			fmt.Println(" content: "+message.(msg.GreetMessage).Data)
+		}
 	})
 
 	onCloseOption := tcp.OnCloseOption(func(socket tcp.Socket) {
