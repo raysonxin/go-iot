@@ -27,6 +27,7 @@ type LengthTypeDataCodec struct {
 	buffer []byte
 }
 
+// NewLengthTypeDataCodec new codec instance
 func NewLengthTypeDataCodec() LengthTypeDataCodec {
 	codec := LengthTypeDataCodec{
 		buffer: make([]byte, 2*BufferSize1024),
@@ -36,15 +37,23 @@ func NewLengthTypeDataCodec() LengthTypeDataCodec {
 
 // Encode encode the message to bytes
 func (codec LengthTypeDataCodec) Encode(msg Message) ([]byte, error) {
+
 	data, err := msg.Serialize()
 	if err != nil {
 		return nil, err
 	}
 
 	buf := new(bytes.Buffer)
+	//put header
 	binary.Write(buf, binary.LittleEndian, []byte(FixedHeader))
+
+	//put length
 	binary.Write(buf, binary.LittleEndian, uint32(len(data)))
+
+	//put message-type
 	binary.Write(buf, binary.LittleEndian, msg.MessageType())
+
+	//put datas
 	buf.Write(data)
 
 	return buf.Bytes(), nil
@@ -53,61 +62,7 @@ func (codec LengthTypeDataCodec) Encode(msg Message) ([]byte, error) {
 // Decode decode bytes to message
 // the structure of message is Length-Type-Data,
 // the below code will analyze bytes according to the structure.
-// func (codec LengthTypeDataCodec) Decode(datas []byte, msgs []Message) error {
-
-// 	if datas == nil {
-// 		return nil
-// 	}
-
-// 	if MessageLengthBytes+MessageTypeBytes >= len(datas) {
-// 		codec.buffer = append(codec.buffer, datas...)
-// 		return nil
-// 	}
-
-// 	lenBytes := datas[0:MessageLengthBytes]
-// 	lenBuf := bytes.NewReader(lenBytes)
-// 	var msgLen uint32
-// 	if err := binary.Read(lenBuf, binary.LittleEndian, &msgLen); err != nil {
-
-// 		return ErrInvalid
-// 	}
-
-// 	typeBytes := datas[MessageLengthBytes : MessageLengthBytes+MessageTypeBytes]
-// 	typeBuf := bytes.NewReader(typeBytes)
-// 	var typeValue uint16
-// 	if err := binary.Read(typeBuf, binary.LittleEndian, &typeValue); err != nil {
-// 		return nil, nil, err
-// 	}
-
-// 	otherBytes := datas[MessageLengthBytes+MessageTypeBytes:]
-// 	if uint32(len(otherBytes)) < msgLen {
-// 		return nil, datas, ErrNotEnough
-// 	}
-
-// 	if uint32(len(otherBytes)) == msgLen {
-
-// 	}
-// 	dataBytes := otherBytes[:msgLen]
-// 	f, err := GetDeserializer(typeValue)
-// 	if err != nil {
-// 		fmt.Println("deserilizer for type " + string(typeValue) + " does not exists.")
-
-// 		//panic(err)
-// 		//return nil, err
-// 	}
-
-// 	msg, err := f(dataBytes)
-// 	if err != nil {
-
-// 	}
-
-// 	return msg, err
-// }
-
-// Decode decode bytes to message
-// the structure of message is Length-Type-Data,
-// the below code will analyze bytes according to the structure.
-func (codec LengthTypeDataCodec) Decode(buffer []byte, readerChannel chan DecodeResult) []byte {
+func (codec LengthTypeDataCodec) Decode(buffer []byte, readerChannel chan Message) []byte {
 	length := len(buffer)
 
 	var i int
@@ -142,12 +97,12 @@ func (codec LengthTypeDataCodec) Decode(buffer []byte, readerChannel chan Decode
 
 		datas := buffer[i+MessageHeaderBytes+MessageLengthBytes+MessageTypeBytes : i+MessageHeaderBytes+MessageLengthBytes+MessageTypeBytes+int(msgLen)]
 
-		result := DecodeResult{
-			Type:  typeValue,
-			Datas: datas,
-		}
+		// parse []byte to structed message
+		msg := codec.parseToMessage(typeValue, datas)
 
-		readerChannel <- result
+		if msg != nil {
+			readerChannel <- msg
+		}
 
 		i += MessageHeaderBytes + MessageLengthBytes + MessageTypeBytes + int(msgLen) - 1
 	}
@@ -156,4 +111,17 @@ func (codec LengthTypeDataCodec) Decode(buffer []byte, readerChannel chan Decode
 		return make([]byte, 0)
 	}
 	return buffer[i:]
+}
+
+func (codec LengthTypeDataCodec) parseToMessage(msgType uint16, datas []byte) Message {
+	f, err := GetDeserializer(msgType)
+	if err != nil {
+		return nil
+	}
+
+	msg, err := f(datas)
+	if err != nil {
+		return nil
+	}
+	return msg
 }

@@ -18,21 +18,14 @@ func main() {
 			return nil, err
 		}
 
-		//fmt.Println("Data=",greet.Data)
-
 		return greet, err
 	})
 
 	onBufferSizeOption := tcp.OnBufferSizeOption(256)
 
 	onConnectOption := tcp.OnConnectOption(func(socket tcp.Socket) {
-
 		sc := socket.(*tcp.ServerConn)
-
 		fmt.Println("on connect" + sc.Name())
-
-		//sc.SetCodec(tcp.NewLengthTypeDataCodec())
-
 		return
 	})
 
@@ -48,7 +41,11 @@ func main() {
 		fmt.Println("on close")
 	})
 
-	server := tcp.NewServer(onBufferSizeOption, onMessageOption, onConnectOption, onCloseOption)
+	setCodecFuncOptions := tcp.SetCodecFuncOption(func() tcp.MessageCodec {
+		return tcp.NewLengthTypeDataCodec()
+	})
+
+	server := tcp.NewServer(onBufferSizeOption, onMessageOption, onConnectOption, onCloseOption, setCodecFuncOptions)
 
 	l, err := net.Listen("tcp", fmt.Sprintf("%s:%d", "0.0.0.0", 8989))
 	if err != nil {

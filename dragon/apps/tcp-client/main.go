@@ -35,8 +35,6 @@ func main() {
 
 		buffer, _ := codec.Encode(msg)
 
-		//fmt.Println("send content: "+string(buffer))
-
 		//向tcpconn中写入数据
 		_, err3 := tcpconn.Write(buffer)
 		if err3 != nil {

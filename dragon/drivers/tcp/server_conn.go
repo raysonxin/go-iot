@@ -19,7 +19,7 @@ type ServerConn struct {
 	wg       *sync.WaitGroup
 	buffer   []byte
 	sendCh   chan []byte
-	handleCh chan DecodeResult
+	handleCh chan Message
 
 	mu     sync.Mutex
 	name   string
@@ -36,7 +36,7 @@ func NewServerConn(id int64, s *Server, c net.Conn) *ServerConn {
 		once:     &sync.Once{},
 		wg:       &sync.WaitGroup{},
 		sendCh:   make(chan []byte, s.opts.bufferSize),
-		handleCh: make(chan DecodeResult, s.opts.bufferSize),
+		handleCh: make(chan Message, s.opts.bufferSize),
 		heart:    time.Now().UnixNano(),
 		buffer:   make([]byte, 0),
 	}
@@ -56,6 +56,12 @@ func (sc *ServerConn) Name() string {
 	defer sc.mu.Unlock()
 	name := sc.name
 	return name
+}
+
+func (sc *ServerConn) SetHeartbeat(heartbeat int64) {
+	sc.mu.Lock()
+	defer sc.mu.Unlock()
+	sc.heart = heartbeat
 }
 
 func (sc *ServerConn) SetCodec(codec MessageCodec) {
@@ -103,6 +109,7 @@ func (sc *ServerConn) Close() {
 	})
 }
 
+// Write write message to client socket
 func (sc *ServerConn) Write(msg Message) error {
 	datas, err := sc.codec.Encode(msg)
 	if err != nil {
@@ -118,10 +125,11 @@ func (sc *ServerConn) Write(msg Message) error {
 	return err
 }
 
+// readLoop the loop method to handle read
 func (sc *ServerConn) readLoop() {
 	defer func() {
 		if p := recover(); p != nil {
-			fmt.Println("panic:", p)
+			fmt.Println("read loop panic:", p)
 		}
 		sc.wg.Done()
 		fmt.Println("readLoop go-routine exited.")
@@ -141,21 +149,24 @@ func (sc *ServerConn) readLoop() {
 			n, err := sc.rawConn.Read(buffer)
 			if err != nil {
 				sc.Close()
+				return
 			}
 
-			buffer = append(sc.buffer, buffer[0:n]...)
+			sc.SetHeartbeat(time.Now().UnixNano())
 
+			buffer = append(sc.buffer, buffer[0:n]...)
 			sc.buffer = sc.codec.Decode(buffer, sc.handleCh)
 		}
 	}
 }
 
+// writeLoop the loop method to handle write
 func (sc *ServerConn) writeLoop() {
 	var pkt []byte
 
 	defer func() {
 		if p := recover(); p != nil {
-			fmt.Println("panic err")
+			fmt.Println("writeLoop panic err")
 		}
 
 		sc.wg.Done()
@@ -180,10 +191,11 @@ func (sc *ServerConn) writeLoop() {
 	}
 }
 
+// handleLoop the loop method to handle message
 func (sc *ServerConn) handleLoop() {
 	defer func() {
 		if p := recover(); p != nil {
-			fmt.Println("panic err",p)
+			fmt.Println("handle loop panic error", p)
 		}
 
 		sc.wg.Done()
@@ -197,17 +209,7 @@ func (sc *ServerConn) handleLoop() {
 			return
 		case <-sc.belong.ctx.Done():
 			return
-		case msgHandler := <-sc.handleCh:
-			//msgHandler
-			f, err := GetDeserializer(msgHandler.Type)
-			if err != nil {
-				continue
-			}
-
-			msg, err := f(msgHandler.Datas)
-			if err != nil {
-				continue
-			}
+		case msg := <-sc.handleCh:
 
 			onMessage := sc.belong.opts.onMessage
 			if onMessage != nil {

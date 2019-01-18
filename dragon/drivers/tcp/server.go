@@ -9,54 +9,7 @@ import (
 	"time"
 )
 
-type options struct {
-	//codec      MessageCodec
-	onConnect  onConnectFunc
-	onMessage  onMessageFunc
-	onClose    onCloseFunc
-	onError    onErrorFunc
-	bufferSize int
-	reconnect  bool
-}
-
-type ServerOption func(*options)
-
-func OnBufferSizeOption(bsize int) ServerOption {
-	return func(o *options) {
-		o.bufferSize = bsize
-	}
-}
-
-func OnReconnectOption(reconnect bool) ServerOption {
-	return func(o *options) {
-		o.reconnect = reconnect
-	}
-}
-
-func OnConnectOption(cb func(Socket)) ServerOption {
-	return func(o *options) {
-		o.onConnect = cb
-	}
-}
-
-func OnMessageOption(cb func(Message, Socket)) ServerOption {
-	return func(o *options) {
-		o.onMessage = cb
-	}
-}
-
-func OnCloseOption(cb func(Socket)) ServerOption {
-	return func(o *options) {
-		o.onClose = cb
-	}
-}
-
-func OnErrorOption(cb func(Socket)) ServerOption {
-	return func(o *options) {
-		o.onError = cb
-	}
-}
-
+// Server define server struct
 type Server struct {
 	opts     options
 	ctx      context.Context
@@ -67,15 +20,12 @@ type Server struct {
 	listener net.Listener
 }
 
+// NewServer create a new server
 func NewServer(opt ...ServerOption) *Server {
 	var opts options
 	for _, o := range opt {
 		o(&opts)
 	}
-
-	// if opts.codec == nil {
-	// 	opts.codec = LengthTypeDataCodec{}
-	// }
 
 	if opts.bufferSize <= 0 {
 		opts.bufferSize = 256
@@ -91,6 +41,7 @@ func NewServer(opt ...ServerOption) *Server {
 	return s
 }
 
+// ConnsSize get current connection count
 func (s *Server) ConnsSize() int {
 	var sz int
 	s.conns.Range(func(k, v interface{}) bool {
@@ -100,6 +51,7 @@ func (s *Server) ConnsSize() int {
 	return sz
 }
 
+// Start start tcp server with listner
 func (s *Server) Start(l net.Listener) error {
 	defer func() {
 		l.Close()
@@ -140,7 +92,12 @@ func (s *Server) Start(l net.Listener) error {
 		connId := time.Now().UnixNano()
 		sc := NewServerConn(connId, s, rawConn)
 		sc.SetName(sc.rawConn.RemoteAddr().String())
-		sc.SetCodec(NewLengthTypeDataCodec())
+
+		if s.opts.setCodecFunc != nil {
+			sc.SetCodec(s.opts.setCodecFunc())
+		} else {
+			sc.SetCodec(NewLengthTypeDataCodec())
+		}
 
 		s.conns.Store(connId, sc)
 
@@ -156,6 +113,7 @@ func (s *Server) Start(l net.Listener) error {
 	//	return nil
 }
 
+// Stop stop tcp server,release resource
 func (s *Server) Stop() {
 	s.mu.Lock()
 	listener := s.listener

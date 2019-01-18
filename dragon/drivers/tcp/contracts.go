@@ -14,6 +14,8 @@ type onCloseFunc func(Socket)
 
 type onErrorFunc func(Socket)
 
+//type getMessageCodec func()
+
 // definitions about some constants.
 const (
 	MaxConnections    = 1000

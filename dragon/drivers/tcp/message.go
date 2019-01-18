@@ -17,10 +17,5 @@ type MessageCodec interface {
 	Encode(Message) ([]byte, error)
 
 	// Decode decode bytes to message
-	Decode([]byte, chan DecodeResult) []byte
-}
-
-type DecodeResult struct {
-	Type  uint16
-	Datas []byte
+	Decode([]byte, chan Message) []byte
 }
