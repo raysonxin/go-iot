@@ -9,6 +9,7 @@ import (
 	"time"
 )
 
+// ServerConn represents a server connection
 type ServerConn struct {
 	connId  int64
 	belong  *Server
@@ -28,6 +29,7 @@ type ServerConn struct {
 	cancel context.CancelFunc
 }
 
+// NewServerConn create a server connection
 func NewServerConn(id int64, s *Server, c net.Conn) *ServerConn {
 	sc := &ServerConn{
 		connId:   id,
@@ -45,6 +47,7 @@ func NewServerConn(id int64, s *Server, c net.Conn) *ServerConn {
 	return sc
 }
 
+// SetName set server connection's name
 func (sc *ServerConn) SetName(name string) {
 	sc.mu.Lock()
 	defer sc.mu.Unlock()
@@ -58,6 +61,7 @@ func (sc *ServerConn) Name() string {
 	return name
 }
 
+// SetHeartbeat set heartbeat update time
 func (sc *ServerConn) SetHeartbeat(heartbeat int64) {
 	sc.mu.Lock()
 	defer sc.mu.Unlock()
@@ -70,6 +74,7 @@ func (sc *ServerConn) SetCodec(codec MessageCodec) {
 	sc.codec = codec
 }
 
+// Start start server connection
 func (sc *ServerConn) Start() {
 	onConnect := sc.belong.opts.onConnect
 	if onConnect != nil {
@@ -86,6 +91,7 @@ func (sc *ServerConn) Start() {
 	go sc.handleLoop()
 }
 
+// Close close server connection
 func (sc *ServerConn) Close() {
 	sc.once.Do(func() {
 		onClose := sc.belong.opts.onClose
