@@ -19,12 +19,13 @@ func init() {
 }
 
 // Register register a deserializer for a message type
-func Register(msgType uint16, deserializer func([]byte) (Message, error)) {
+func Register(msgType uint16, deserializer func([]byte) (Message, error)) error {
 	if _, ok := msgFuncFactory[msgType]; ok {
-		panic(fmt.Sprintf("trying to register message %d twice", msgType))
+		return errors.New(fmt.Sprintf("trying to register message %d twice", msgType))
 	}
 
 	msgFuncFactory[msgType] = deserializer
+	return nil
 }
 
 // GetDeserializer get deserializer for msg type.

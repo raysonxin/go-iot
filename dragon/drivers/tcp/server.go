@@ -2,12 +2,15 @@ package tcp
 
 import (
 	"context"
-	"fmt"
+	"github.com/raysonxin/go-iot/dragon/utils"
+	"github.com/sirupsen/logrus"
 	"net"
 	"os"
 	"sync"
 	"time"
 )
+
+var logger *logrus.Logger = utils.NewLogger("logs/server_log")
 
 // Server define server struct
 type Server struct {
@@ -85,6 +88,7 @@ func (s *Server) Start(l net.Listener) error {
 		sz := s.ConnsSize()
 		if sz >= MaxConnections {
 			//fmt.print too many conns
+			logger.Info("too many conns")
 			rawConn.Close()
 			continue
 		}
@@ -106,8 +110,8 @@ func (s *Server) Start(l net.Listener) error {
 			sc.Start()
 		}()
 
-		fmt.Println("Accepted client ", sc.Name())
-
+		//fmt.Println("Accepted client ", sc.Name())
+		logger.Info("accepted client ", sc.Name())
 	}
 
 	//	return nil
@@ -132,7 +136,7 @@ func (s *Server) Stop() {
 
 	for _, c := range conns {
 		c.rawConn.Close()
-		fmt.Println("close client", c.Name())
+		logger.Info("close client", c.Name())
 	}
 
 	s.mu.Lock()
@@ -140,6 +144,6 @@ func (s *Server) Stop() {
 	s.mu.Unlock()
 
 	s.wg.Wait()
-	fmt.Println("server stopped gracefully,bye.")
+	logger.Info("server stopped gracefully,bye.")
 	os.Exit(0)
 }

@@ -3,7 +3,6 @@ package tcp
 import (
 	"context"
 	"errors"
-	"fmt"
 	"net"
 	"sync"
 	"time"
@@ -135,20 +134,20 @@ func (sc *ServerConn) Write(msg Message) error {
 func (sc *ServerConn) readLoop() {
 	defer func() {
 		if p := recover(); p != nil {
-			fmt.Println("read loop panic:", p)
+			logger.Error("read loop panic:", p)
 		}
 		sc.wg.Done()
-		fmt.Println("readLoop go-routine exited.")
+		logger.Info("readLoop go-routine exited.")
 		sc.Close()
 	}()
 
 	for {
 		select {
 		case <-sc.ctx.Done():
-			fmt.Println("conn cancel")
+			logger.Info("conn cancel")
 			return
 		case <-sc.belong.ctx.Done():
-			fmt.Println("server cancel")
+			logger.Info("server cancel")
 			return
 		default:
 			buffer := make([]byte, BufferSize1024)
@@ -172,11 +171,11 @@ func (sc *ServerConn) writeLoop() {
 
 	defer func() {
 		if p := recover(); p != nil {
-			fmt.Println("writeLoop panic err")
+			logger.Error("writeLoop panic err")
 		}
 
 		sc.wg.Done()
-		fmt.Println("writeLoop go-routine exited.")
+		logger.Info("writeLoop go-routine exited.")
 		sc.Close()
 	}()
 
@@ -189,7 +188,7 @@ func (sc *ServerConn) writeLoop() {
 		case pkt = <-sc.sendCh:
 			if pkt != nil {
 				if _, err := sc.rawConn.Write(pkt); err != nil {
-					fmt.Println("error writing data " + err.Error())
+					logger.Error("error writing data ", err.Error())
 					return
 				}
 			}
@@ -201,11 +200,11 @@ func (sc *ServerConn) writeLoop() {
 func (sc *ServerConn) handleLoop() {
 	defer func() {
 		if p := recover(); p != nil {
-			fmt.Println("handle loop panic error", p)
+			logger.Error("handle loop panic error", p)
 		}
 
 		sc.wg.Done()
-		fmt.Println("handleLoop go-routine exited.")
+		logger.Info("handleLoop go-routine exited.")
 		sc.Close()
 	}()
 

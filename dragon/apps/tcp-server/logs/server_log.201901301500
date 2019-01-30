@@ -1,0 +1,5 @@
+{"level":"info","msg":"accepted client 127.0.0.1:51456","time":"2019-01-30T15:47:17+08:00"}
+{"level":"info","msg":"readLoop go-routine exited.","time":"2019-01-30T15:47:47+08:00"}
+{"level":"info","msg":"handleLoop go-routine exited.","time":"2019-01-30T15:47:47+08:00"}
+{"level":"info","msg":"writeLoop go-routine exited.","time":"2019-01-30T15:47:47+08:00"}
+{"level":"info","msg":"accepted client 127.0.0.1:51552","time":"2019-01-30T15:51:48+08:00"}

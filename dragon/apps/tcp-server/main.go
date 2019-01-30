@@ -5,16 +5,20 @@ import (
 	"fmt"
 	"github.com/raysonxin/go-iot/dragon/apps/msg"
 	"github.com/raysonxin/go-iot/dragon/drivers/tcp"
+	"github.com/raysonxin/go-iot/dragon/utils"
+	"github.com/sirupsen/logrus"
 	"net"
 )
 
 func main() {
 
+	log := utils.NewLogger("logs/tcp_log")
+
 	tcp.Register(0x0001, func(bytes []byte) (tcp.Message, error) {
 		var greet msg.GreetMessage
 		err := json.Unmarshal(bytes, &greet)
 		if err != nil {
-			fmt.Println("unmarshal greet message err", err.Error())
+			log.Error("unmarshal greet message err", err.Error())
 			return nil, err
 		}
 
@@ -30,15 +34,20 @@ func main() {
 	})
 
 	onMessageOption := tcp.OnMessageOption(func(message tcp.Message, socket tcp.Socket) {
-		fmt.Println("on message")
+		log.Info("recv tcp message")
+
 		switch message.MessageType() {
 		case 0x0001:
-			fmt.Println(" content: " + message.(msg.GreetMessage).Data)
+			log.Info("content: ", message.(msg.GreetMessage).Data)
 		}
 	})
 
 	onCloseOption := tcp.OnCloseOption(func(socket tcp.Socket) {
-		fmt.Println("on close")
+		conn := socket.(*tcp.ServerConn)
+		log.WithFields(logrus.Fields{
+			"method":   "OnClose",
+			"clientId": conn.Name(),
+		}).Error("tcp client close")
 	})
 
 	setCodecFuncOptions := tcp.SetCodecFuncOption(func() tcp.MessageCodec {
